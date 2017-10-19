@@ -95,20 +95,6 @@ Promises:
 */
 void UserApp1Initialize(void)
 {
-  u8 au8WelcomeMessage[] = "ANT Master";
-
-  /* Write a weclome message on the LCD */
-#if EIE1
-  /* Set a message up on the LCD. Delay is required to let the clear command send. */
-  LCDCommand(LCD_CLEAR_CMD);
-  for(u32 i = 0; i < 10000; i++);
-  LCDMessage(LINE1_START_ADDR, au8WelcomeMessage);
-#endif /* EIE1 */
-  
-#if 0 // untested for MPG2
-  
-#endif /* MPG2 */
-
  /* Configure ANT for this application */
   UserApp1_sChannelInfo.AntChannel          = ANT_CHANNEL_USERAPP;
   UserApp1_sChannelInfo.AntChannelType      = ANT_CHANNEL_TYPE_USERAPP;
@@ -136,6 +122,8 @@ void UserApp1Initialize(void)
   }
   else
   {
+    LedBlink(RED, LED_2HZ);
+    
     /* The task isn't properly initialized, so shut it down and don't run */
     DebugPrintf(UserApp1_au8MessageFail);
     UserApp1_StateMachine = UserApp1SM_Error;
@@ -179,6 +167,20 @@ static void UserApp1SM_AntChannelAssign()
 {
   if( AntRadioStatusChannel(ANT_CHANNEL_USERAPP) == ANT_CONFIGURED)
   {
+    LedOff(RED);
+    LedOn(YELLOW);
+    
+    DebugPrintf("ANT Master ready\n\r");
+    DebugPrintf("Device ID: ");
+    DebugPrintNumber(ANT_DEVICEID_DEC_USERAPP);
+    DebugPrintf(", Device Type: ");
+    DebugPrintNumber(ANT_DEVICE_TYPE_USERAPP);
+    DebugPrintf(", Trans Type: ");
+    DebugPrintNumber(ANT_TRANSMISSION_TYPE_USERAPP);
+    DebugPrintf(", Frequency: ");
+    DebugPrintNumber(ANT_FREQUENCY_USERAPP);
+    DebugLineFeed();
+    
     /* Channel assignment is successful, so open channel and
     proceed to Idle state */
     AntOpenChannelNumber(ANT_CHANNEL_USERAPP);
@@ -188,45 +190,93 @@ static void UserApp1SM_AntChannelAssign()
   /* Watch for time out */
   if(IsTimeUp(&UserApp1_u32Timeout, 3000))
   {
+    LedBlink(RED, LED_2HZ);
+    
     DebugPrintf(UserApp1_au8MessageFail);
     UserApp1_StateMachine = UserApp1SM_Error;    
   }
      
 } /* end UserApp1SM_AntChannelAssign */
 
+static void UserAppSM1_WaitChannelClose()
+{
+  /* Monitor the channel status to check if channel is closed */
+  if( AntRadioStatusChannel(ANT_CHANNEL_USERAPP) == ANT_CLOSED )
+  {
+    LedOff(GREEN);
+    LedOn(YELLOW);
+
+    UserApp1_StateMachine = UserApp1SM_Idle;
+  }
+
+  /* Check for timeout */
+  if( IsTimeUp(&UserApp1_u32Timeout, 3000) )
+  {
+    LedOff(GREEN);
+    LedOff(YELLOW);
+    LedBlink(RED, LED_2HZ);
+
+    UserApp1_StateMachine = UserApp1SM_Error;
+  }
+} /* end UserAppSM1_WaitChannelClose() */
+
+static void UserAppSM1_WaitChannelOpen()
+{
+  /* Monitor the channel status to check if channel is closed */
+  if( AntRadioStatusChannel(ANT_CHANNEL_USERAPP) == ANT_OPEN )
+  {
+    LedOn(GREEN);
+    LedOff(YELLOW);
+
+    UserApp1_StateMachine = UserApp1SM_Idle;
+  }
+
+  /* Check for timeout */
+  if( IsTimeUp(&UserApp1_u32Timeout, 3000) )
+  {
+    LedOff(GREEN);
+    LedOn(YELLOW);
+
+    UserApp1_StateMachine = UserApp1SM_Idle;
+  }
+} /* end UserAppSM1_WaitChannelOpen() */
 /*-------------------------------------------------------------------------------------------------------------------*/
 /* Wait for ??? */
 static void UserApp1SM_Idle(void)
 {
-  static u8 au8TestMessage[] = {0, 0, 0, 0, 0xA5, 0, 0, 0};
-  u8 au8DataContent[] = "xxxxxxxxxxxxxxxx";
+  static u8 au8TestMessage[] = {0x5B, 0, 0, 0, 0xFF, 0, 0, 0};
+  u8 au8DataContent[26];
+  static u8 au8TotalMessage[] = "TOT:                ";
+  static u8 au8MissedMessage[] = "MIS:                ";
   
-  /* Check all the buttons and update au8TestMessage according to the button state */ 
-  au8TestMessage[0] = 0x00;
+  /* Check the buttons and update au8TestMessage according to the button state */ 
   if( IsButtonPressed(BUTTON0) )
   {
-    au8TestMessage[0] = 0xff;
+    ButtonAcknowledge(BUTTON0);
+    
+    /*if AntRadioStatusChannel is closed,enter UserAppSM1_WaitChannelOpen*/
+    if( AntRadioStatusChannel(ANT_CHANNEL_USERAPP) == ANT_CLOSED )
+    {
+      LedBlink(GREEN, LED_2HZ);
+      
+      AntOpenChannelNumber(ANT_CHANNEL_USERAPP);
+      
+      UserApp1_u32Timeout = G_u32SystemTime1ms;
+      UserApp1_StateMachine = UserAppSM1_WaitChannelOpen;
+    }
+
+    /*if AntRadioStatusChannel is open,enter UserAppSM1_WaitChannelClose*/
+    if( AntRadioStatusChannel(ANT_CHANNEL_USERAPP) == ANT_OPEN )
+    {
+      LedBlink(GREEN, LED_2HZ);
+      
+      AntCloseChannelNumber(ANT_CHANNEL_USERAPP);
+      
+      UserApp1_u32Timeout = G_u32SystemTime1ms;
+      UserApp1_StateMachine = UserAppSM1_WaitChannelClose;
+    }
   }
   
-  au8TestMessage[1] = 0x00;
-  if( IsButtonPressed(BUTTON1) )
-  {
-    au8TestMessage[1] = 0xff;
-  }
-
-#ifdef EIE1
-  au8TestMessage[2] = 0x00;
-  if( IsButtonPressed(BUTTON2) )
-  {
-    au8TestMessage[2] = 0xff;
-  }
-
-  au8TestMessage[3] = 0x00;
-  if( IsButtonPressed(BUTTON3) )
-  {
-    au8TestMessage[3] = 0xff;
-  }
-#endif /* EIE1 */
   
   if( AntReadAppMessageBuffer() )
   {
@@ -236,31 +286,68 @@ static void UserApp1SM_Idle(void)
       /* We got some data: parse it into au8DataContent[] */
       for(u8 i = 0; i < ANT_DATA_BYTES; i++)
       {
-        au8DataContent[2 * i]     = HexToASCIICharUpper(G_au8AntApiCurrentMessageBytes[i] / 16);
-        au8DataContent[2 * i + 1] = HexToASCIICharUpper(G_au8AntApiCurrentMessageBytes[i] % 16);
+        au8DataContent[3 * i]     = HexToASCIICharUpper(G_au8AntApiCurrentMessageBytes[i] / 16);
+        au8DataContent[3 * i + 1] = HexToASCIICharUpper(G_au8AntApiCurrentMessageBytes[i] % 16);
+        au8DataContent[3 * i + 2] = '-';
       }
-
-#ifdef EIE1
-      LCDMessage(LINE2_START_ADDR, au8DataContent);
-#endif /* EIE1 */
       
-#ifdef MPG2
-#endif /* MPG2 */
-      
+      au8DataContent[3 * ANT_DATA_BYTES] = '\0';
+			
+      DebugPrintf(au8DataContent);
+      DebugLineFeed();
     }
     else if(G_eAntApiCurrentMessageClass == ANT_TICK)
     {
-     /* Update and queue the new message data */
-      au8TestMessage[7]++;
-      if(au8TestMessage[7] == 0)
+      AntQueueAcknowledgedMessage(ANT_CHANNEL_USERAPP, au8TestMessage);
+      
+      
+      /* au8TestMessage 1 to 3 used to count failed message */
+      if( G_au8AntApiCurrentMessageBytes[ANT_TICK_MSG_EVENT_CODE_INDEX] == EVENT_TRANSFER_TX_FAILED )
       {
-        au8TestMessage[6]++;
-        if(au8TestMessage[6] == 0)
+        au8TestMessage[3]++;
+        
+        if( au8TestMessage[3] == 0 )
         {
-          au8TestMessage[5]++;
+          au8TestMessage[2]++;
+          if( au8TestMessage[2] == 0 )
+          {
+                  au8TestMessage[1]++;
+          }
         }
+        
+        /* get au8MissedMessages and display it on lcd line2 */
+        for( u8 i = 0; i < 3; i++ )
+        {
+          au8MissedMessage[2*i+4] = HexToASCIICharUpper(au8TestMessage[i+1] / 16);
+          au8MissedMessage[2*i+5] = HexToASCIICharUpper(au8TestMessage[i+1] % 16);
+        }
+        
+        LCDMessage(LINE2_START_ADDR,au8MissedMessage);
       }
-      AntQueueBroadcastMessage(ANT_CHANNEL_USERAPP, au8TestMessage);
+      
+      /* au8TestMessage 5 to 7 used to count total message */
+      if( G_au8AntApiCurrentMessageBytes[ANT_TICK_MSG_EVENT_CODE_INDEX] == EVENT_TRANSFER_TX_COMPLETED )
+      {
+        au8TestMessage[7]++;
+        
+        if( au8TestMessage[7] == 0 )
+        {
+          au8TestMessage[6]++;
+          if( au8TestMessage[6] == 0 )
+          {
+            au8TestMessage[5]++;
+          }
+        }
+        
+        /* get au8TotalMessage1 and display it on lcd line1 */
+        for( u8 i = 0; i < 3; i++ )
+        {
+          au8TotalMessage[2*i+4] = HexToASCIICharUpper(au8TestMessage[i+5] / 16);
+          au8TotalMessage[2*i+5] = HexToASCIICharUpper(au8TestMessage[i+5] % 16);
+        }
+        
+        LCDMessage(LINE1_START_ADDR,au8TotalMessage);
+      }
     }
   } /* end AntReadData() */
   
