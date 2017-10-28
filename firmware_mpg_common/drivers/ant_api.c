@@ -94,7 +94,6 @@ if(AntRadioStatusChannel(ANT_CHANNEL_0) == ANT_UNCONFIGURED)
 
   // Go to a wait state that exits when AntRadioStatusChannel(ANT_CHANNEL_0) no longer returns ANT_UNCONFIGURED)
 
-
 bool AntUnassignChannelNumber(AntChannelNumberType eChannel_)
 Queues message to unassign the specified ANT channel so it can be reconfigured.
 e.g.
