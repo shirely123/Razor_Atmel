@@ -95,14 +95,20 @@ Promises:
 */
 void UserApp1Initialize(void)
 {
-  u8 au8WelcomeMessage[] = "ANT Master";
-
+  u8 au8WelcomeMessage1[] = "Hide and Go Seek!";
+  u8 au8WelcomeMessage2[] = "Press B0/B1 to Start";
+  
+  LCDCommand(LCD_CLEAR_CMD);
+  LCDMessage(LINE1_START_ADDR, au8WelcomeMessage1);
+  LCDMessage(LINE2_START_ADDR, au8WelcomeMessage2);
+  //u8 au8WelcomeMessage[] = "ANT Master";
+  LedOff(PURPLE);
   /* Write a weclome message on the LCD */
 #if EIE1
   /* Set a message up on the LCD. Delay is required to let the clear command send. */
-  LCDCommand(LCD_CLEAR_CMD);
+  
   for(u32 i = 0; i < 10000; i++);
-  LCDMessage(LINE1_START_ADDR, au8WelcomeMessage);
+  //LCDMessage(LINE1_START_ADDR, au8WelcomeMessage);
 #endif /* EIE1 */
   
 #if 0 // untested for MPG2
@@ -181,7 +187,6 @@ static void UserApp1SM_AntChannelAssign()
   {
     /* Channel assignment is successful, so open channel and
     proceed to Idle state */
-    AntOpenChannelNumber(ANT_CHANNEL_USERAPP);
     UserApp1_StateMachine = UserApp1SM_Idle;
   }
   
@@ -196,74 +201,305 @@ static void UserApp1SM_AntChannelAssign()
 
 /*-------------------------------------------------------------------------------------------------------------------*/
 /* Wait for ??? */
-static void UserApp1SM_Idle(void)
+
+//Start Seeking
+static void UserApp1SM_Seeking(void)
 {
-  static u8 au8TestMessage[] = {0, 0, 0, 0, 0xA5, 0, 0, 0};
-  u8 au8DataContent[] = "xxxxxxxxxxxxxxxx";
+  u8 au8UserApp1SM_Seeking[]="Seeker";
+  u8 au8UserApp1SM_Seeking1[]="Ready or not";
+  u8 au8UserApp1SM_Seeking2[]="Here I come!";
+  static u16 u16Counter=10000;
   
-  /* Check all the buttons and update au8TestMessage according to the button state */ 
-  au8TestMessage[0] = 0x00;
-  if( IsButtonPressed(BUTTON0) )
+  u16Counter--;
+  if(u16Counter==9900)
   {
-    au8TestMessage[0] = 0xff;
+    LCDCommand(LCD_CLEAR_CMD);
+    LCDMessage(LINE1_START_ADDR, au8UserApp1SM_Seeking);
+    LCDMessage(LINE2_START_ADDR, "10");
   }
-  
-  au8TestMessage[1] = 0x00;
-  if( IsButtonPressed(BUTTON1) )
+  if(u16Counter==8900)
   {
-    au8TestMessage[1] = 0xff;
+    LCDMessage(LINE2_START_ADDR, "09");
   }
+  if(u16Counter==7900)
+  {
+    LCDMessage(LINE2_START_ADDR, "08");
+  }
+  if(u16Counter==6900)
+  {
+    LCDMessage(LINE2_START_ADDR, "07");
+  }
+  if(u16Counter==5900)
+  {
+    LCDMessage(LINE2_START_ADDR, "06");
+  }
+  if(u16Counter==4900)
+  {
+    LCDMessage(LINE2_START_ADDR, "05");
+  }
+  if(u16Counter==3900)
+  {
+    LCDMessage(LINE2_START_ADDR, "04");
+  }
+  if(u16Counter==2900)
+  {
+    LCDMessage(LINE2_START_ADDR, "03");
+  }
+  if(u16Counter==1900)
+  {
+    LCDMessage(LINE2_START_ADDR, "02");
+  }
+  if(u16Counter==900)
+  {
+    LCDMessage(LINE2_START_ADDR, "01");
+  }
+  if(u16Counter==0)
+  {
+    LCDMessage(LINE1_START_ADDR, au8UserApp1SM_Seeking1);
+    LCDMessage(LINE2_START_ADDR, au8UserApp1SM_Seeking2);
+    UserApp1_StateMachine = UserApp1SM_Seeking_Processing;
+  }
+}
 
-#ifdef EIE1
-  au8TestMessage[2] = 0x00;
-  if( IsButtonPressed(BUTTON2) )
-  {
-    au8TestMessage[2] = 0xff;
-  }
-
-  au8TestMessage[3] = 0x00;
-  if( IsButtonPressed(BUTTON3) )
-  {
-    au8TestMessage[3] = 0xff;
-  }
-#endif /* EIE1 */
+static void UserApp1SM_Seeking_Processing(void)
+{
+  static u8 u8Temp;
+  u8 au8UserApp1SM_Seeking_Processing[]="Found you!";
+  static u8 au8TestMessage[] = {0, 0, 0, 0, 0, 0, 0, 0};
   
   if( AntReadAppMessageBuffer() )
   {
-     /* New message from ANT task: check what it is */
     if(G_eAntApiCurrentMessageClass == ANT_DATA)
     {
-      /* We got some data: parse it into au8DataContent[] */
-      for(u8 i = 0; i < ANT_DATA_BYTES; i++)
+      u8Temp = abs (G_sAntApiCurrentMessageExtData.s8RSSI);
+      
+      //-95 dBm
+      if(u8Temp <= 95)
       {
-        au8DataContent[2 * i]     = HexToASCIICharUpper(G_au8AntApiCurrentMessageBytes[i] / 16);
-        au8DataContent[2 * i + 1] = HexToASCIICharUpper(G_au8AntApiCurrentMessageBytes[i] % 16);
+        LedOn(WHITE);
+        PWMAudioOn(BUZZER1);
+        PWMAudioSetFrequency(BUZZER1, 100);
+        au8TestMessage[0] = 0x01;
       }
+      else
+      {
+        LedOff(WHITE);
+        PWMAudioOff(BUZZER1);
+        au8TestMessage[0] = 0x00;
+      }
+      //-85dBm
+      if(u8Temp <= 85 )
+      {
+        LedOn(PURPLE);
+        PWMAudioOn(BUZZER1);
+        PWMAudioSetFrequency(BUZZER1, 200);
+        au8TestMessage[1] = 0x01;
+      }
+      else
+      {
+        LedOff(PURPLE);
+        au8TestMessage[1] = 0x00;
+      }
+      //-80dBm
+      if(u8Temp <= 80)
+      {
+        LedOn(BLUE);
+        PWMAudioOn(BUZZER1);
+        PWMAudioSetFrequency(BUZZER1, 300);
+        au8TestMessage[2] = 0x01;
+      }
+      else
+      {
+        LedOff(BLUE);
+        au8TestMessage[2] = 0x00;
+      }
+      //-75dBm
+      if(u8Temp <= 75)
+      {
+        LedOn(CYAN);
+        PWMAudioOn(BUZZER1);
+        PWMAudioSetFrequency(BUZZER1, 400);
+        au8TestMessage[3] = 0x01;
+      }
+      else
+      {
+        LedOff(PURPLE);
+        au8TestMessage[3] = 0x00;
+      }
+      //-70dBm
+      if(u8Temp <= 70)
+      {
+        LedOn(GREEN);
+        PWMAudioOn(BUZZER1);
+        PWMAudioSetFrequency(BUZZER1, 500);
+        au8TestMessage[4] = 0x01;
+      }
+      else
+      {
+        LedOff(GREEN);
+        au8TestMessage[4] = 0x00;
+      }
+      //-65dBm
+      if(u8Temp <= 65)
+      {
+        LedOn(YELLOW);
+        PWMAudioOn(BUZZER1);
+        PWMAudioSetFrequency(BUZZER1, 600);
+        au8TestMessage[5] = 0x01;
+      }
+      else
+      {
+        LedOff(YELLOW);
+        au8TestMessage[5] = 0x00;
+      }
+      //-55dBm
+      if(u8Temp <= 55)
+      {
+        LedOn(ORANGE);
+        PWMAudioOn(BUZZER1);
+        PWMAudioSetFrequency(BUZZER1, 700);
+        au8TestMessage[6] = 0x01;
+      }
+      else
+      {
+        LedOff(YELLOW);
+        au8TestMessage[6] = 0x00;
+      }
+       //-50dBm
+      if(u8Temp <= 50)
+      {
+        LedOn(RED);
+        PWMAudioOn(BUZZER1);
+        PWMAudioSetFrequency(BUZZER1, 800);
+        LCDCommand(LCD_CLEAR_CMD);
+        LCDMessage(LINE1_START_ADDR, au8UserApp1SM_Seeking_Processing);
+        au8TestMessage[7] = 0x01;
+      }
+      else
+      {
+        LedOff(RED);
+        au8TestMessage[7] = 0x00;
+      }
+      
+      AntQueueAcknowledgedMessage(ANT_CHANNEL_USERAPP, au8TestMessage);
+    }
+    if(G_eAntApiCurrentMessageClass == ANT_TICK)
+    {		  	
+      if(G_au8AntApiCurrentMessageBytes[ANT_TICK_MSG_EVENT_CODE_INDEX] == EVENT_TRANSFER_TX_FAILED)
+      {
+        AntQueueAcknowledgedMessage(ANT_CHANNEL_USERAPP, au8TestMessage);
+      }
+    }
+  }
+}
 
-#ifdef EIE1
-      LCDMessage(LINE2_START_ADDR, au8DataContent);
-#endif /* EIE1 */
-      
-#ifdef MPG2
-#endif /* MPG2 */
-      
-    }
-    else if(G_eAntApiCurrentMessageClass == ANT_TICK)
-    {
-     /* Update and queue the new message data */
-      au8TestMessage[7]++;
-      if(au8TestMessage[7] == 0)
-      {
-        au8TestMessage[6]++;
-        if(au8TestMessage[6] == 0)
-        {
-          au8TestMessage[5]++;
-        }
-      }
-      AntQueueBroadcastMessage(ANT_CHANNEL_USERAPP, au8TestMessage);
-    }
-  } /* end AntReadData() */
+//Start hiding
+static void UserApp1SM_Hiding(void)
+{
+  u8 UserApp1SM_Hiding[] = "Hide!";
+  LCDCommand(LCD_CLEAR_CMD);
+  LCDMessage(LINE1_START_ADDR,UserApp1SM_Hiding);
+  UserApp1_StateMachine = UserApp1SM_Hided;	
+}
+
+static void UserApp1SM_Hided(void)
+{
+  u8 UserApp1SM_Hided[] = "You found me!";
+  static u8 au8TestMessage2[] = {0, 0, 0, 0, 0, 0, 0, 0};
   
+  if( AntReadAppMessageBuffer())
+  {
+    if(G_eAntApiCurrentMessageClass == ANT_TICK)
+    {
+      AntQueueAcknowledgedMessage(ANT_CHANNEL_USERAPP, au8TestMessage2);
+    }
+    if(G_eAntApiCurrentMessageClass == ANT_DATA)
+    {
+      if(G_au8AntApiCurrentMessageBytes[0] == 0x01 )
+      {
+        LedOn(WHITE);
+      }
+      if(G_au8AntApiCurrentMessageBytes[0] == 0x00 )
+      {
+        LedOff(WHITE);
+      }
+      if(G_au8AntApiCurrentMessageBytes[1] == 0x01 )
+      {
+        LedOn(PURPLE);
+      }
+      if(G_au8AntApiCurrentMessageBytes[1] == 0x00 )
+      {
+        LedOff(PURPLE);
+      }
+      if(G_au8AntApiCurrentMessageBytes[2] == 0x01 )
+      {
+        LedOn(BLUE);
+      }
+      if(G_au8AntApiCurrentMessageBytes[2] == 0x00 )
+      {
+        LedOff(BLUE);
+      }
+      if(G_au8AntApiCurrentMessageBytes[3] == 0x01 )
+      {
+        LedOn(CYAN);
+      }
+      if(G_au8AntApiCurrentMessageBytes[3] == 0x00 )
+      {
+        LedOff(CYAN);
+      }
+      if(G_au8AntApiCurrentMessageBytes[4] == 0x01 )
+      {
+        LedOn(GREEN);
+      }
+      if(G_au8AntApiCurrentMessageBytes[4] == 0x00 )
+      {
+        LedOff(GREEN);
+      }
+      if(G_au8AntApiCurrentMessageBytes[5] == 0x01 )
+      {
+        LedOn(YELLOW);
+      }
+      if(G_au8AntApiCurrentMessageBytes[5] == 0x00 )
+      {
+        LedOff(YELLOW);
+      }
+      if(G_au8AntApiCurrentMessageBytes[6] == 0x01 )
+      {
+        LedOn(ORANGE);
+      }
+      if(G_au8AntApiCurrentMessageBytes[6] == 0x00 )
+      {
+        LedOff(ORANGE);
+      }
+      if(G_au8AntApiCurrentMessageBytes[7] == 0x01 )
+      {
+        LedOn(RED);
+      }
+      if(G_au8AntApiCurrentMessageBytes[7] == 0x00 )
+      {
+        LedOff(RED);
+        LCDCommand(LCD_CLEAR_CMD);
+        LCDMessage(LINE2_START_ADDR,UserApp1SM_Hided);
+      }
+    }
+  }
+}
+
+static void UserApp1SM_Idle(void)
+{
+  /* Check all the buttons and update au8TestMessage according to the button state */ 
+  if( WasButtonPressed(BUTTON0) )
+  {
+    ButtonAcknowledge(BUTTON0);
+    AntOpenChannelNumber(ANT_CHANNEL_USERAPP);   //???
+    UserApp1_StateMachine = UserApp1SM_Seeking;
+  }
+  if( WasButtonPressed(BUTTON1) )
+  {
+    ButtonAcknowledge(BUTTON1);
+    AntOpenChannelNumber(ANT_CHANNEL_USERAPP);   //???
+    UserApp1_StateMachine = UserApp1SM_Hiding;
+  }
 } /* end UserApp1SM_Idle() */
 
 
