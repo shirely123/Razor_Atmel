@@ -91,7 +91,7 @@
       <WATCH_2>
         <expressions>
           
-        <item>au8Display</item><item></item></expressions>
+        <item>au8Display</item><item/></expressions>
         <col-names>
           
           
@@ -108,7 +108,7 @@
       <WATCH_3>
         <expressions>
           
-        <item>au8Displa</item><item>au8Display</item><item>u16DataCount</item><item>au8Display2</item><item></item></expressions>
+        <item>au8Displa</item><item>au8Display</item><item>u16DataCount</item><item>au8Display2</item><item/></expressions>
         <col-names>
           
           

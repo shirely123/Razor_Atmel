@@ -202,52 +202,208 @@ static void UserApp1SM_AntChannelAssign()
 //Choose status
 static void UserApp1SM_Idle(void)
 {
+  static u16 u16BuzzerTime=0;
+  static u16 u16BuzzerTime1=0;
+  static u16 u16BuzzerTime2=0;
   static u16 u16DataCount=0;
+  static u16 u16DataCount1=200;
   static u32 u32Sum=0;
   static u16 u16Count=0;
   static u16 u16AveCount=0;
+  static u16 u16Maxbpm=0;
+  static u16 u16Minbpm=0;
   static u8 u8Bit=0;
   static u8 u8Bit1=0;
   static u8 u8Bit2=0;
   static u16 u16AveCountBit=0;
   static u16 u16AveCountBit1=0;
   static u16 u16AveCountBit2=0;
+  static u16 u16MaxbpmBit=0;
+  static u16 u16MaxbpmBit1=0;
+  static u16 u16MaxbpmBit2=0;
+  static u16 u16MinbpmBit=0;
+  static u16 u16MinbpmBit1=0;
+  static u16 u16MinbpmBit2=0;
   static u8 au8Display[3];
-  static u8 au8Display2[3];
-  u8 au8UserApp1SM_HeartBeat[]="Heart Beat:";
-  u8 au8UserApp1SM_HeartAve[]="Ave:";
+  static u8 au8Display2[] = {'0', '0', '0'};
+  static u8 au8Display3[] = {'0', '0', '0'};
+  static u8 au8Display4[] = {'0', '0', '0'};
+                              /*01234567890123456789*/
+  u8 au8UserApp1SM_HeartBeat[]="Heart Beat:         ";
+  u8 au8UserApp1SM_HeartAve[] ="Ave:                ";
+  u8 au8UserApp1SM_HeartMax[] ="Ma:                ";
+  u8 au8UserApp1SM_HeartMin[] ="Mi:                ";
+  static bool bOn = FALSE;
+  static bool bOn1 = FALSE;
+  static bool bOn2 = FALSE;
+  static u8 u8CharacterSpaces[200];
+  static u8 u8SpacesLength;
   
   if(WasButtonPressed(BUTTON0))
   {
     ButtonAcknowledge(BUTTON0);
-   
+
     AntOpenChannelNumber(ANT_CHANNEL_USERAPP);
-   
+    
+    LCDMessage(LINE1_START_ADDR,au8UserApp1SM_HeartBeat);
+    LCDMessage(LINE2_START_ADDR,au8UserApp1SM_HeartAve);
+    LCDMessage(LINE2_START_ADDR+8,au8UserApp1SM_HeartMax);
+    LCDMessage(LINE2_START_ADDR+14,au8UserApp1SM_HeartMin);
   }
-    if( AntReadAppMessageBuffer() )
+  
+  
+  
+  if(bOn)
+  {
+    u16BuzzerTime++;
+  }
+  if(u16BuzzerTime> 0 && u16BuzzerTime<=200)
+  {
+    PWMAudioSetFrequency(BUZZER1, 1000);
+    PWMAudioOn(BUZZER1);
+    LedOn(GREEN);
+    LedPWM(LCD_RED, LED_PWM_0);
+    LedPWM(LCD_GREEN, LED_PWM_100);
+    LedPWM(LCD_BLUE, LED_PWM_0);
+  }
+  if(u16BuzzerTime > 200 && u16BuzzerTime<600)
+  {
+    PWMAudioOff(BUZZER1);
+    LedOff(GREEN);
+    LedPWM(LCD_RED, LED_PWM_0);
+    LedPWM(LCD_GREEN, LED_PWM_0);
+    LedPWM(LCD_BLUE, LED_PWM_0);
+  }
+  if(u16BuzzerTime >=600)
+  {
+    PWMAudioOff(BUZZER1);
+    LedOff(GREEN);
+    LedPWM(LCD_RED, LED_PWM_0);
+    LedPWM(LCD_GREEN, LED_PWM_0);
+    LedPWM(LCD_BLUE, LED_PWM_0);
+    u16BuzzerTime=0;
+    bOn = FALSE;
+  }
+  
+  if(bOn1)
+  {
+    u16BuzzerTime1++;
+  }
+  if(u16BuzzerTime1> 0 && u16BuzzerTime1<=400)
+  {
+    PWMAudioSetFrequency(BUZZER1, 200);
+    PWMAudioOn(BUZZER1);
+    LedOn(RED);
+    LedPWM(LCD_RED, LED_PWM_100);
+    LedPWM(LCD_GREEN, LED_PWM_0);
+    LedPWM(LCD_BLUE, LED_PWM_0);
+  }
+  if(u16BuzzerTime1 > 400 && u16BuzzerTime1 < 8000)
+  {
+    PWMAudioOff(BUZZER1);
+    LedOff(RED);
+    LedPWM(LCD_RED, LED_PWM_0);
+    LedPWM(LCD_GREEN, LED_PWM_0);
+    LedPWM(LCD_BLUE, LED_PWM_0);
+  }
+  if(u16BuzzerTime1 >= 8000)
+  {
+    PWMAudioOff(BUZZER1);
+    LedOff(RED);
+    u16BuzzerTime1=0;
+    LedPWM(LCD_RED, LED_PWM_0);
+    LedPWM(LCD_GREEN, LED_PWM_0);
+    LedPWM(LCD_BLUE, LED_PWM_0);
+    bOn1 = FALSE;
+  }
+  
+  if(bOn2)
+  {
+    u16BuzzerTime2++;
+  }
+  if(u16BuzzerTime2> 0 && u16BuzzerTime2<=200)
+  {
+    PWMAudioSetFrequency(BUZZER1, 1000);
+    PWMAudioOn(BUZZER1);
+    LedOn(BLUE);
+    LedPWM(LCD_RED, LED_PWM_0);
+    LedPWM(LCD_GREEN, LED_PWM_0);
+    LedPWM(LCD_BLUE, LED_PWM_100);
+  }
+  if(u16BuzzerTime1 > 200 && u16BuzzerTime1 < 600)
+  {
+    PWMAudioOff(BUZZER1);
+    LedOff(BLUE);
+    LedPWM(LCD_RED, LED_PWM_0);
+    LedPWM(LCD_GREEN, LED_PWM_0);
+    LedPWM(LCD_BLUE, LED_PWM_0);
+  }
+  if(u16BuzzerTime2 >=600)
+  {
+    PWMAudioOff(BUZZER1);
+    LedOff(BLUE);
+    u16BuzzerTime2=0;
+    LedPWM(LCD_RED, LED_PWM_0);
+    LedPWM(LCD_GREEN, LED_PWM_0);
+    LedPWM(LCD_BLUE, LED_PWM_0);
+    bOn2 = FALSE;
+  }
+	
+  if( AntReadAppMessageBuffer() )
+  {
+    if(G_eAntApiCurrentMessageClass == ANT_DATA)
     {
-      if(G_eAntApiCurrentMessageClass == ANT_DATA)
+      if(G_au8AntApiCurrentMessageBytes[7] < 60)
+      {
+        bOn=TRUE;
+      }
+      if(G_au8AntApiCurrentMessageBytes[7] >= 60 && G_au8AntApiCurrentMessageBytes[7] <= 100)
+      {
+        bOn1=TRUE;
+      }
+      if(G_au8AntApiCurrentMessageBytes[7] > 100)
+      {
+        bOn2=TRUE;
+      }
+      if(u16DataCount < G_au8AntApiCurrentMessageBytes[7])
+      {
+        u16Maxbpm = G_au8AntApiCurrentMessageBytes[7];
+        u16MaxbpmBit = u16Maxbpm%10;
+        u16MaxbpmBit1 = (u16Maxbpm/10)%10;
+        u16MaxbpmBit2 = u16Maxbpm/100;
+        au8Display3[2] = u16MaxbpmBit+'0';
+        au8Display3[1] = u16MaxbpmBit1+'0';
+        au8Display3[0] = u16MaxbpmBit2+'0';
+      }
+      
+      if(u16DataCount1 > G_au8AntApiCurrentMessageBytes[7])
+      {
+        u16Minbpm = G_au8AntApiCurrentMessageBytes[7];
+        u16MinbpmBit = u16Minbpm%10;
+        u16MinbpmBit1 = (u16Minbpm/10)%10;
+        u16MinbpmBit2 = u16Minbpm/100;
+        au8Display4[2] = u16MinbpmBit+'0';
+        au8Display4[1] = u16MinbpmBit1+'0';
+        au8Display4[0] = u16MinbpmBit2+'0';
+      }
+      
+      if(u16DataCount != G_au8AntApiCurrentMessageBytes[7])
       {
         u16DataCount = G_au8AntApiCurrentMessageBytes[7];
-        
-        if(u16DataCount != G_au8AntApiCurrentMessageBytes[7])
+        u32Sum += u16DataCount;
+        u16Count++;
+          
+        if(u16Count == 20)
         {
-          u16DataCount = G_au8AntApiCurrentMessageBytes[7];
-          u32Sum += u16DataCount;
-          u16Count++;
-          if(u16Count == 20)
-          {
-            u16AveCount = u32Sum/u16Count;
-            u16AveCountBit = u16AveCount%10;
-            u16AveCountBit1 = (u16AveCount/10)%10;
-            u16AveCountBit2 = u16AveCount/100;
-            au8Display2[2] = u16AveCountBit+'0';
-            au8Display2[1] = u16AveCountBit1+'0';
-            au8Display2[0] = u16AveCountBit2+'0';
-          }
-          LCDMessage(LINE2_START_ADDR,au8UserApp1SM_HeartAve);
-          LCDMessage(LINE2_START_ADDR+4,au8Display2);
+          u16AveCount = u32Sum/u16Count;
+          u16AveCountBit = u16AveCount%10;
+          u16AveCountBit1 = (u16AveCount/10)%10;
+          u16AveCountBit2 = u16AveCount/100;
+          au8Display2[2] = u16AveCountBit+'0';
+          au8Display2[1] = u16AveCountBit1+'0';
+          au8Display2[0] = u16AveCountBit2+'0';
         }
+      
         //turn 16 to 10
         u8Bit = u16DataCount%10;
         u8Bit1 = (u16DataCount/10)%10;
@@ -255,13 +411,24 @@ static void UserApp1SM_Idle(void)
         au8Display[2] = u8Bit+'0';
         au8Display[1] = u8Bit1+'0';
         au8Display[0] = u8Bit2+'0';
+        
+        LCDMessage(LINE1_START_ADDR+11,au8Display);
+        LCDMessage(LINE2_START_ADDR+4,au8Display2);
+        LCDMessage(LINE2_START_ADDR+11,au8Display3);
+        LCDMessage(LINE2_START_ADDR+17,au8Display4);
       }
-      
-      LCDCommand(LCD_CLEAR_CMD);
-      LCDMessage(LINE1_START_ADDR,au8UserApp1SM_HeartBeat);
-      LCDMessage(LINE1_START_ADDR+11,au8Display); 
-    }
-  
+      for(u8SpacesLength = 4; u8SpacesLength < G_au8AntApiCurrentMessageBytes[7]/4+0.5 ; u8SpacesLength++)
+      {
+        u8CharacterSpaces[u8SpacesLength] = '---';
+      }
+      u8CharacterSpaces[3] = '|';
+      u8CharacterSpaces[2] = u8Bit + '0';
+      u8CharacterSpaces[1] = u8Bit1 + '0';
+      u8CharacterSpaces[0] = u8Bit2 + '0';
+      DebugPrintf(u8CharacterSpaces);
+      DebugLineFeed(); 
+    } 
+  }
 } /* end UserApp1SM_Idle() */
 
 /*-------------------------------------------------------------------------------------------------------------------*/
