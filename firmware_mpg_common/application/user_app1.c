@@ -95,12 +95,11 @@ Promises:
 */
 void UserApp1Initialize(void)
 {
-  u8 au8WelcomeMessage1[] = "Hide and Go Seek!";
-  u8 au8WelcomeMessage2[] = "Press B0 to Start";
+  static u8 au8NetworkKey[]={0xB9,0xA5,0x21,0xFB,0xBD,0x72,0xC3,0x45};
+  u8 au8UserApp1SM_Welcome[]="Heart Beat Sensor";
   
   LCDCommand(LCD_CLEAR_CMD);
-  LCDMessage(LINE1_START_ADDR, au8WelcomeMessage1);
-  LCDMessage(LINE2_START_ADDR, au8WelcomeMessage2);
+  LCDMessage(LINE1_START_ADDR, au8UserApp1SM_Welcome);
   /* Write a weclome message on the LCD */
 #if EIE1
   /* Set a message up on the LCD. Delay is required to let the clear command send. */
@@ -129,7 +128,7 @@ void UserApp1Initialize(void)
   UserApp1_sChannelInfo.AntNetwork = ANT_NETWORK_DEFAULT;
   for(u8 i = 0; i < ANT_NETWORK_NUMBER_BYTES; i++)
   {
-    UserApp1_sChannelInfo.AntNetworkKey[i] = ANT_DEFAULT_NETWORK_KEY;
+    UserApp1_sChannelInfo.AntNetworkKey[i] = au8NetworkKey[i];
   }
   
   /* Attempt to queue the ANT channel setup */
@@ -203,422 +202,67 @@ static void UserApp1SM_AntChannelAssign()
 //Choose status
 static void UserApp1SM_Idle(void)
 {
- static bool bSeekOrHide = FALSE;
-	
-  if(AntRadioStatusChannel(ANT_CHANNEL_USERAPP) == ANT_OPEN)
-  {
-    AntCloseChannelNumber(ANT_CHANNEL_USERAPP);
-  }
-
-  /*Start the game and switch roles*/
+  static u16 u16DataCount=0;
+  static u32 u32Sum=0;
+  static u16 u16Count=0;
+  static u16 u16AveCount=0;
+  static u8 u8Bit=0;
+  static u8 u8Bit1=0;
+  static u8 u8Bit2=0;
+  static u16 u16AveCountBit=0;
+  static u16 u16AveCountBit1=0;
+  static u16 u16AveCountBit2=0;
+  static u8 au8Display[3];
+  static u8 au8Display2[3];
+  u8 au8UserApp1SM_HeartBeat[]="Heart Beat:";
+  u8 au8UserApp1SM_HeartAve[]="Ave:";
+  
   if(WasButtonPressed(BUTTON0))
   {
     ButtonAcknowledge(BUTTON0);
-    LCDCommand(LCD_CLEAR_CMD);
-    
+   
     AntOpenChannelNumber(ANT_CHANNEL_USERAPP);
-    
-    if(bSeekOrHide)
-    {	
-            bSeekOrHide = FALSE ;
-            UserApp1_StateMachine = UserApp1SM_Seeking;		//Seek 	Program entrance//
-    }		
-    else
-    {	
-            bSeekOrHide = TRUE ;
-            UserApp1_StateMachine = UserApp1SM_Hiding2;		//Hide 	Program entrance//
-    }
+   
   }
+    if( AntReadAppMessageBuffer() )
+    {
+      if(G_eAntApiCurrentMessageClass == ANT_DATA)
+      {
+        u16DataCount = G_au8AntApiCurrentMessageBytes[7];
+        
+        if(u16DataCount != G_au8AntApiCurrentMessageBytes[7])
+        {
+          u16DataCount = G_au8AntApiCurrentMessageBytes[7];
+          u32Sum += u16DataCount;
+          u16Count++;
+          if(u16Count == 20)
+          {
+            u16AveCount = u32Sum/u16Count;
+            u16AveCountBit = u16AveCount%10;
+            u16AveCountBit1 = (u16AveCount/10)%10;
+            u16AveCountBit2 = u16AveCount/100;
+            au8Display2[2] = u16AveCountBit+'0';
+            au8Display2[1] = u16AveCountBit1+'0';
+            au8Display2[0] = u16AveCountBit2+'0';
+          }
+          LCDMessage(LINE2_START_ADDR,au8UserApp1SM_HeartAve);
+          LCDMessage(LINE2_START_ADDR+4,au8Display2);
+        }
+        //turn 16 to 10
+        u8Bit = u16DataCount%10;
+        u8Bit1 = (u16DataCount/10)%10;
+        u8Bit2 = u16DataCount/100;
+        au8Display[2] = u8Bit+'0';
+        au8Display[1] = u8Bit1+'0';
+        au8Display[0] = u8Bit2+'0';
+      }
+      
+      LCDCommand(LCD_CLEAR_CMD);
+      LCDMessage(LINE1_START_ADDR,au8UserApp1SM_HeartBeat);
+      LCDMessage(LINE1_START_ADDR+11,au8Display); 
+    }
+  
 } /* end UserApp1SM_Idle() */
-
-
-//Start Seeking
-static void UserApp1SM_Seeking(void)
-{
-  u8 au8UserApp1SM_Seeking[]="Seeker";
-  u8 au8UserApp1SM_Seeking1[]="Ready or not";
-  u8 au8UserApp1SM_Seeking2[]="Here I come!";
-  static u16 u16Counter=10000;
-  static bool bIsOk=FALSE;
-  static bool bIsLight=TRUE;
-  
-  if(bIsLight)
-  {
-    LCDCommand(LCD_CLEAR_CMD);
-    LCDMessage(LINE1_START_ADDR, au8UserApp1SM_Seeking);
-    bIsLight=FALSE;
-  }
-  if( AntReadAppMessageBuffer() )
-  {
-    if(G_eAntApiCurrentMessageClass == ANT_DATA)
-    {
-      bIsOk=TRUE;
-    }
-  }
-  
-  if(bIsOk)
-  {
-    u16Counter--;
-    if(u16Counter==9900)
-    {
-      LCDCommand(LCD_CLEAR_CMD);
-      LCDMessage(LINE1_START_ADDR, au8UserApp1SM_Seeking);
-      LCDMessage(LINE2_START_ADDR, "10");
-    }
-    if(u16Counter==8900)
-    {
-      LCDMessage(LINE2_START_ADDR, "09");
-    }
-    if(u16Counter==7900)
-    {
-      LCDMessage(LINE2_START_ADDR, "08");
-    }
-    if(u16Counter==6900)
-    {
-      LCDMessage(LINE2_START_ADDR, "07");
-    }
-    if(u16Counter==5900)
-    {
-      LCDMessage(LINE2_START_ADDR, "06");
-    }
-    if(u16Counter==4900)
-    {
-      LCDMessage(LINE2_START_ADDR, "05");
-    }
-    if(u16Counter==3900)
-    {
-      LCDMessage(LINE2_START_ADDR, "04");
-    }
-    if(u16Counter==2900)
-    {
-      LCDMessage(LINE2_START_ADDR, "03");
-    }
-    if(u16Counter==1900)
-    {
-      LCDMessage(LINE2_START_ADDR, "02");
-    }
-    if(u16Counter==900)
-    {
-      LCDMessage(LINE2_START_ADDR, "01");
-    }
-    if(u16Counter==0)
-    {
-      LCDMessage(LINE1_START_ADDR, au8UserApp1SM_Seeking1);
-      LCDMessage(LINE2_START_ADDR, au8UserApp1SM_Seeking2);
-      bIsOk=FALSE;
-      bIsLight=TRUE;
-      u16Counter=10000;
-      UserApp1_StateMachine = UserApp1SM_Seeking_Processing;
-    }     
-  }
-}
-
-static void UserApp1SM_Seeking_Processing(void)
-{
-  static u16 u16Count1=0;
-  static u8 u8Temp;
-  u8 au8UserApp1SM_Seeking_Processing[]="Found you!";
-  static u8 au8TestMessage[] = {0, 0, 0, 0, 0, 0, 0, 0};
-  u8 au8WelcomeMessage5[] = "Hide and Go Seek!";
-  u8 au8WelcomeMessage6[] = "Press B0 to Start";
-  static bool bIsRight2=FALSE;
-  
-  if( AntReadAppMessageBuffer() )
-  {
-    if(G_eAntApiCurrentMessageClass == ANT_DATA)
-    {
-      u8Temp = abs (G_sAntApiCurrentMessageExtData.s8RSSI);
-      
-      //-90 dBm
-      if(u8Temp <= 90)
-      {
-        LedOn(WHITE);
-        PWMAudioOn(BUZZER1);
-        PWMAudioSetFrequency(BUZZER1, 100);
-        au8TestMessage[0] = 0x01;
-      }
-      else
-      {
-        LedOff(WHITE);
-        PWMAudioOff(BUZZER1);
-        au8TestMessage[0] = 0x00;
-      }
-      //-87dBm
-      if(u8Temp <= 87 )
-      {
-        LedOn(PURPLE);
-        PWMAudioOn(BUZZER1);
-        PWMAudioSetFrequency(BUZZER1, 200);
-        au8TestMessage[1] = 0x01;
-      }
-      else
-      {
-        LedOff(PURPLE);
-        au8TestMessage[1] = 0x00;
-      }
-      //-82dBm
-      if(u8Temp <= 82)
-      {
-        LedOn(BLUE);
-        PWMAudioOn(BUZZER1);
-        PWMAudioSetFrequency(BUZZER1, 300);
-        au8TestMessage[2] = 0x01;
-      }
-      else
-      {
-        LedOff(BLUE);
-        au8TestMessage[2] = 0x00;
-      }
-      //-77dBm
-      if(u8Temp <= 77)
-      {
-        LedOn(CYAN);
-        PWMAudioOn(BUZZER1);
-        PWMAudioSetFrequency(BUZZER1, 400);
-        au8TestMessage[3] = 0x01;
-      }
-      else
-      {
-        LedOff(PURPLE);
-        au8TestMessage[3] = 0x00;
-      }
-      //-72dBm
-      if(u8Temp <= 72)
-      {
-        LedOn(GREEN);
-        PWMAudioOn(BUZZER1);
-        PWMAudioSetFrequency(BUZZER1, 500);
-        au8TestMessage[4] = 0x01;
-      }
-      else
-      {
-        LedOff(GREEN);
-        au8TestMessage[4] = 0x00;
-      }
-      //-67dBm
-      if(u8Temp <= 67)
-      {
-        LedOn(YELLOW);
-        PWMAudioOn(BUZZER1);
-        PWMAudioSetFrequency(BUZZER1, 600);
-        au8TestMessage[5] = 0x01;
-      }
-      else
-      {
-        LedOff(YELLOW);
-        au8TestMessage[5] = 0x00;
-      }
-      //-62dBm
-      if(u8Temp <= 62)
-      {
-        LedOn(ORANGE);
-        PWMAudioOn(BUZZER1);
-        PWMAudioSetFrequency(BUZZER1, 700);
-        au8TestMessage[6] = 0x01;
-      }
-      else
-      {
-        LedOff(YELLOW);
-        au8TestMessage[6] = 0x00;
-      }
-       //-55dBm
-      if(u8Temp <= 55)
-      {
-        LedOn(RED);
-        PWMAudioOn(BUZZER1);
-        PWMAudioSetFrequency(BUZZER1, 800);
-        au8TestMessage[7] = 0x01;
-        bIsRight2=TRUE;
-      }
-      else
-      {
-        LedOff(RED);
-        au8TestMessage[7] = 0x00;
-      }
-      
-      AntQueueAcknowledgedMessage(ANT_CHANNEL_USERAPP, au8TestMessage);
-    }
-    
-    if(G_eAntApiCurrentMessageClass == ANT_TICK)
-    {		  	
-        AntQueueAcknowledgedMessage(ANT_CHANNEL_USERAPP, au8TestMessage);
-    }
-  }
-  if(bIsRight2)
-  {
-    u16Count1++;
-    
-    if(u16Count1==100)
-    {
-    LCDCommand(LCD_CLEAR_CMD);
-    LCDMessage(LINE2_START_ADDR,au8UserApp1SM_Seeking_Processing);
-    }
-    
-    if(u16Count1==4000)
-    {
-      LedOff(WHITE);
-      LedOff(PURPLE);
-      LedOff(BLUE);
-      LedOff(CYAN);
-      LedOff(GREEN);
-      LedOff(YELLOW);
-      LedOff(ORANGE);
-      LedOff(RED);
-      LCDCommand(LCD_CLEAR_CMD);
-      LCDMessage(LINE1_START_ADDR, au8WelcomeMessage5);
-      LCDMessage(LINE2_START_ADDR, au8WelcomeMessage6);
-      u16Count1=0;
-      bIsRight2=FALSE;
-      PWMAudioOff(BUZZER1);
-
-      UserApp1_StateMachine = UserApp1SM_Idle;
-    }
-  }
-}
-
-//Start hiding
-static void UserApp1SM_Hiding2(void)
-{
-  u8 UserApp1SM_Hiding[] = "Hide!";
-  LCDCommand(LCD_CLEAR_CMD);
-  LCDMessage(LINE1_START_ADDR,UserApp1SM_Hiding);
-  UserApp1_StateMachine = UserApp1SM_Hided;	
-}
-
-static void UserApp1SM_Hided(void)
-{
-  static bool bIsRight=FALSE;
-  static u16 u16Count2=0;
-  u8 au8UserApp1SM_Hided[] = "You found me!";
-  static u8 au8TestMessage2[] = {0, 0, 0, 0, 0, 0, 0, 0};
-  u8 au8WelcomeMessage3[] = "Hide and Go Seek!";
-  u8 au8WelcomeMessage4[] = "Press B0 to Start";
-  
-  if( AntReadAppMessageBuffer())
-  {
-    if(G_eAntApiCurrentMessageClass == ANT_TICK)
-    {
-      AntQueueAcknowledgedMessage(ANT_CHANNEL_USERAPP, au8TestMessage2);
-    }
-    
-    if(G_eAntApiCurrentMessageClass == ANT_DATA)
-    {
-      if(G_au8AntApiCurrentMessageBytes[0] == 0x01 )
-      {
-        LedOn(WHITE);
-        PWMAudioOn(BUZZER1);
-        PWMAudioSetFrequency(BUZZER1, 100);
-      }
-      else if(G_au8AntApiCurrentMessageBytes[0] == 0x00 )
-      {
-        LedOff(WHITE);
-      }
-      if(G_au8AntApiCurrentMessageBytes[1] == 0x01 )
-      {
-        LedOn(PURPLE);
-        PWMAudioOn(BUZZER1);
-        PWMAudioSetFrequency(BUZZER1, 200);
-      }
-      else if(G_au8AntApiCurrentMessageBytes[1] == 0x00 )
-      {
-        LedOff(PURPLE);
-      }
-      if(G_au8AntApiCurrentMessageBytes[2] == 0x01 )
-      {
-        LedOn(BLUE);
-        PWMAudioOn(BUZZER1);
-        PWMAudioSetFrequency(BUZZER1, 300);
-      }
-      else if(G_au8AntApiCurrentMessageBytes[2] == 0x00 )
-      {
-        LedOff(BLUE);
-      }
-      if(G_au8AntApiCurrentMessageBytes[3] == 0x01 )
-      {
-        LedOn(CYAN);
-        PWMAudioOn(BUZZER1);
-        PWMAudioSetFrequency(BUZZER1, 400);
-      }
-      else if(G_au8AntApiCurrentMessageBytes[3] == 0x00 )
-      {
-        LedOff(CYAN);
-      }
-      if(G_au8AntApiCurrentMessageBytes[4] == 0x01 )
-      {
-        LedOn(GREEN);
-        PWMAudioOn(BUZZER1);
-        PWMAudioSetFrequency(BUZZER1, 500);
-      }
-      else if(G_au8AntApiCurrentMessageBytes[4] == 0x00 )
-      {
-        LedOff(GREEN);
-      }
-      if(G_au8AntApiCurrentMessageBytes[5] == 0x01 )
-      {
-        LedOn(YELLOW);
-        PWMAudioOn(BUZZER1);
-        PWMAudioSetFrequency(BUZZER1, 600);
-      }
-      else if(G_au8AntApiCurrentMessageBytes[5] == 0x00 )
-      {
-        LedOff(YELLOW);
-      }
-      if(G_au8AntApiCurrentMessageBytes[6] == 0x01 )
-      {
-        LedOn(ORANGE);
-        PWMAudioOn(BUZZER1);
-        PWMAudioSetFrequency(BUZZER1, 700);
-      }
-      else if(G_au8AntApiCurrentMessageBytes[6] == 0x00 )
-      {
-        LedOff(ORANGE);
-      }
-      if(G_au8AntApiCurrentMessageBytes[7] == 0x01 )
-      {
-        LedOn(RED);
-        PWMAudioOn(BUZZER1);
-        PWMAudioSetFrequency(BUZZER1, 800);
-        bIsRight=TRUE;
-      }
-      else if(G_au8AntApiCurrentMessageBytes[7] == 0x00 )
-      {
-        LedOff(RED);
-      }
-    }
-  }
-  if(bIsRight)
-  {
-    u16Count2++;
-    if(u16Count2==100)
-    {
-    LCDCommand(LCD_CLEAR_CMD);
-    LCDMessage(LINE2_START_ADDR,au8UserApp1SM_Hided);
-    }
-    
-    if(u16Count2==4000)
-    {
-      LedOff(WHITE);
-      LedOff(PURPLE);
-      LedOff(BLUE);
-      LedOff(CYAN);
-      LedOff(GREEN);
-      LedOff(YELLOW);
-      LedOff(ORANGE);
-      LedOff(RED);
-      PWMAudioOff(BUZZER1);
-      LCDCommand(LCD_CLEAR_CMD);
-      LCDMessage(LINE1_START_ADDR, au8WelcomeMessage3);
-      LCDMessage(LINE2_START_ADDR, au8WelcomeMessage4);
-      u16Count2=0;
-      bIsRight=FALSE;
-
-      UserApp1_StateMachine = UserApp1SM_Idle;
-    }
-  }
-}
-
-
-
 
 /*-------------------------------------------------------------------------------------------------------------------*/
 /* Handle an error (for now, do nothing) */
