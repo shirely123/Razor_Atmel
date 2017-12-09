@@ -97,9 +97,11 @@ void UserApp1Initialize(void)
 {
   static u8 au8NetworkKey[]={0xB9,0xA5,0x21,0xFB,0xBD,0x72,0xC3,0x45};
   u8 au8UserApp1SM_Welcome[]="Heart Beat Sensor";
+  u8 au8Welcome[]="Press Button0 start";
   
   LCDCommand(LCD_CLEAR_CMD);
   LCDMessage(LINE1_START_ADDR, au8UserApp1SM_Welcome);
+  LCDMessage(LINE2_START_ADDR, au8Welcome);
   /* Write a weclome message on the LCD */
 #if EIE1
   /* Set a message up on the LCD. Delay is required to let the clear command send. */
@@ -202,26 +204,25 @@ static void UserApp1SM_AntChannelAssign()
 //Choose status
 static void UserApp1SM_Idle(void)
 {
-  static u16 u16BuzzerTime=0;
-  static u16 u16BuzzerTime1=0;
-  static u16 u16BuzzerTime2=0;
-  static u16 u16DataCount=0;
-  static u16 u16DataCount1=200;
-  static u32 u32Sum=0;
-  static u16 u16Count=0;
+  static u16 u16BuzzerTime=0;  //low bpm time count
+  static u16 u16BuzzerTime1=0;  //median value time count
+  static u16 u16BuzzerTime2=0;  //high bpm time count
+  static u16 u16DataCount=0;  //save G_au8AntApiCurrentMessageBytes[7]
+  static u32 u32Sum=0;  //sum
+  static u16 u16Count=0;  //
   static u16 u16AveCount=0;
   static u16 u16Maxbpm=0;
   static u16 u16Minbpm=0;
-  static u8 u8Bit=0;
+  static u8 u8Bit=0;  //bpm bit
   static u8 u8Bit1=0;
   static u8 u8Bit2=0;
-  static u16 u16AveCountBit=0;
+  static u16 u16AveCountBit=0;  //average bit
   static u16 u16AveCountBit1=0;
   static u16 u16AveCountBit2=0;
-  static u16 u16MaxbpmBit=0;
+  static u16 u16MaxbpmBit=0;  //max bit
   static u16 u16MaxbpmBit1=0;
   static u16 u16MaxbpmBit2=0;
-  static u16 u16MinbpmBit=0;
+  static u16 u16MinbpmBit=0;  //min bit
   static u16 u16MinbpmBit1=0;
   static u16 u16MinbpmBit2=0;
   static u8 au8Display[3];
@@ -251,22 +252,21 @@ static void UserApp1SM_Idle(void)
     LCDMessage(LINE2_START_ADDR+14,au8UserApp1SM_HeartMin);
   }
   
-  
-  
+  /*******************************Heart Beat<60   GREEN***********************************************************/
   if(bOn)
   {
     u16BuzzerTime++;
   }
-  if(u16BuzzerTime> 0 && u16BuzzerTime<=200)
+  if(u16BuzzerTime> 0 && u16BuzzerTime<=200)  //0~200ms turn on buzzer ,Led,Lcd
   {
-    PWMAudioSetFrequency(BUZZER1, 1000);
+    PWMAudioSetFrequency(BUZZER1, 500);
     PWMAudioOn(BUZZER1);
     LedOn(GREEN);
     LedPWM(LCD_RED, LED_PWM_0);
     LedPWM(LCD_GREEN, LED_PWM_100);
     LedPWM(LCD_BLUE, LED_PWM_0);
   }
-  if(u16BuzzerTime > 200 && u16BuzzerTime<600)
+  if(u16BuzzerTime > 200 && u16BuzzerTime<600)  //200~600ms turn off buzzer ,Led,Lcd
   {
     PWMAudioOff(BUZZER1);
     LedOff(GREEN);
@@ -274,7 +274,7 @@ static void UserApp1SM_Idle(void)
     LedPWM(LCD_GREEN, LED_PWM_0);
     LedPWM(LCD_BLUE, LED_PWM_0);
   }
-  if(u16BuzzerTime >=600)
+  if(u16BuzzerTime >=600)  //return
   {
     PWMAudioOff(BUZZER1);
     LedOff(GREEN);
@@ -285,20 +285,21 @@ static void UserApp1SM_Idle(void)
     bOn = FALSE;
   }
   
+/*******************************<60Heart Beat<100  GREEN********************************************************/
   if(bOn1)
   {
     u16BuzzerTime1++;
   }
-  if(u16BuzzerTime1> 0 && u16BuzzerTime1<=400)
+  if(u16BuzzerTime1> 0 && u16BuzzerTime1<=400)  //0~400ms turn on buzzer ,Led,Lcd
   {
-    PWMAudioSetFrequency(BUZZER1, 200);
+    PWMAudioSetFrequency(BUZZER1, 100);
     PWMAudioOn(BUZZER1);
     LedOn(RED);
     LedPWM(LCD_RED, LED_PWM_100);
     LedPWM(LCD_GREEN, LED_PWM_0);
     LedPWM(LCD_BLUE, LED_PWM_0);
   }
-  if(u16BuzzerTime1 > 400 && u16BuzzerTime1 < 8000)
+  if(u16BuzzerTime1 > 400 && u16BuzzerTime1 < 800)  //400~800ms turn off buzzer ,Led,Lcd
   {
     PWMAudioOff(BUZZER1);
     LedOff(RED);
@@ -306,7 +307,7 @@ static void UserApp1SM_Idle(void)
     LedPWM(LCD_GREEN, LED_PWM_0);
     LedPWM(LCD_BLUE, LED_PWM_0);
   }
-  if(u16BuzzerTime1 >= 8000)
+  if(u16BuzzerTime1 >= 800)  //return
   {
     PWMAudioOff(BUZZER1);
     LedOff(RED);
@@ -317,20 +318,21 @@ static void UserApp1SM_Idle(void)
     bOn1 = FALSE;
   }
   
+  /*******************************Heart Beat>100  GREEN**********************************************************/
   if(bOn2)
   {
     u16BuzzerTime2++;
   }
-  if(u16BuzzerTime2> 0 && u16BuzzerTime2<=200)
+  if(u16BuzzerTime2> 0 && u16BuzzerTime2<=200)  //0~200ms turn on buzzer ,Led,Lcd
   {
-    PWMAudioSetFrequency(BUZZER1, 1000);
+    PWMAudioSetFrequency(BUZZER1, 500);
     PWMAudioOn(BUZZER1);
     LedOn(BLUE);
     LedPWM(LCD_RED, LED_PWM_0);
     LedPWM(LCD_GREEN, LED_PWM_0);
     LedPWM(LCD_BLUE, LED_PWM_100);
   }
-  if(u16BuzzerTime1 > 200 && u16BuzzerTime1 < 600)
+  if(u16BuzzerTime1 > 200 && u16BuzzerTime1 < 600)  //200~600ms turn off buzzer ,Led,Lcd
   {
     PWMAudioOff(BUZZER1);
     LedOff(BLUE);
@@ -348,20 +350,21 @@ static void UserApp1SM_Idle(void)
     LedPWM(LCD_BLUE, LED_PWM_0);
     bOn2 = FALSE;
   }
-	
+
+  /************************************************Buffer*****************************************************/
   if( AntReadAppMessageBuffer() )
   {
     if(G_eAntApiCurrentMessageClass == ANT_DATA)
     {
-      if(G_au8AntApiCurrentMessageBytes[7] < 60)
+      if(G_au8AntApiCurrentMessageBytes[7] < 60)  //limit <60
       {
         bOn=TRUE;
       }
-      if(G_au8AntApiCurrentMessageBytes[7] >= 60 && G_au8AntApiCurrentMessageBytes[7] <= 100)
+      if(G_au8AntApiCurrentMessageBytes[7] >= 60 && G_au8AntApiCurrentMessageBytes[7] <= 100)  //limit from 60 to 100
       {
         bOn1=TRUE;
       }
-      if(G_au8AntApiCurrentMessageBytes[7] > 100)
+      if(G_au8AntApiCurrentMessageBytes[7] > 100)  //limit > 100
       {
         bOn2=TRUE;
       }
@@ -376,7 +379,8 @@ static void UserApp1SM_Idle(void)
         au8Display3[0] = u16MaxbpmBit2+'0';
       }
       
-      if(u16DataCount1 > G_au8AntApiCurrentMessageBytes[7])
+      /*********************************************Max and Min********************************************/
+      if(u16DataCount > G_au8AntApiCurrentMessageBytes[7])
       {
         u16Minbpm = G_au8AntApiCurrentMessageBytes[7];
         u16MinbpmBit = u16Minbpm%10;
@@ -387,10 +391,11 @@ static void UserApp1SM_Idle(void)
         au8Display4[0] = u16MinbpmBit2+'0';
       }
       
+      /****************average*************/
       if(u16DataCount != G_au8AntApiCurrentMessageBytes[7])
       {
         u16DataCount = G_au8AntApiCurrentMessageBytes[7];
-        u32Sum += u16DataCount;
+        u32Sum += u16DataCount; 
         u16Count++;
           
         if(u16Count == 20)
@@ -417,9 +422,11 @@ static void UserApp1SM_Idle(void)
         LCDMessage(LINE2_START_ADDR+11,au8Display3);
         LCDMessage(LINE2_START_ADDR+17,au8Display4);
       }
+      
+      /***********************************************Tera Term*********************************************/
       for(u8SpacesLength = 4; u8SpacesLength < G_au8AntApiCurrentMessageBytes[7]/4+0.5 ; u8SpacesLength++)
       {
-        u8CharacterSpaces[u8SpacesLength] = '---';
+        u8CharacterSpaces[u8SpacesLength] = '-';
       }
       u8CharacterSpaces[3] = '|';
       u8CharacterSpaces[2] = u8Bit + '0';
